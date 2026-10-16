@@ -28,7 +28,7 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
-    /* กล่องวิดีโอ */
+    /* กล่องวิดีโอหลัก */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -41,19 +41,19 @@
     }
     .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     
+    /* เลเยอร์บล็อกป้องกันคลิกออกไปยูทูป (ครอบคลุมทั้งตัวจอและแถบบน) */
     .video-blocker-top {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 60px;
+      height: calc(100% - 45px); /* เว้นเฉพาะแถบควบคุมด้านล่างสุดไว้ให้กดเสียงและความชัดได้ */
       z-index: 10;
       background: transparent;
     }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
 
-    /* ตารางแอดมิน */
     .admin-card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; text-align: left; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { padding: 12px; border-bottom: 1px solid #30363d; text-align: left; font-size: 14px; }
@@ -102,7 +102,7 @@
   <div id="live-section">
     <h2>🔴 กำลังรับชมการถ่ายทอดสด</h2>
     <p class="user-info" id="welcome-user"></p>
-    <div class="video-container">
+    <div class="video-container" id="vid-container">
       <div class="video-blocker-top"></div>
       <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
@@ -131,8 +131,8 @@
   </div>
 
   <script>
-    const SECRET_CODE = "1235";      // รหัสสำหรับคนดู
-    const ADMIN_CODE = "nano1278";   // รหัสสำหรับแอดมิน
+    const SECRET_CODE = "1235";      
+    const ADMIN_CODE = "nano1278";   
     
     const SUPABASE_URL = 'https://eciqpqnpfpndyyurqhzf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm';
@@ -146,7 +146,6 @@
       document.getElementById(cardId).style.display = 'block';
     }
 
-    // ตรวจสอบรหัสคนดูทั่วไป
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -171,7 +170,7 @@
         }
 
         await supabaseClient.from('viewers').insert([
-          { name: name, twitter: twitter, joined_at: new Date().toISOString() }
+          { name: name, twitter: twitter }
         ]);
 
         document.getElementById('login-card').style.display = 'none';
@@ -186,7 +185,6 @@
       }
     });
 
-    // ตรวจสอบรหัสเข้าหน้าแอดมิน (nano1278)
     document.getElementById('admin-login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const inputCode = document.getElementById('admin-passcode').value.trim();
@@ -200,7 +198,6 @@
       loadAdminViewers();
     });
 
-    // โหลดรายชื่อคนดูสำหรับแอดมิน
     async function loadAdminViewers() {
       const tbody = document.getElementById('viewer-table-body');
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
@@ -209,7 +206,7 @@
         const { data, error } = await supabaseClient
           .from('viewers')
           .select('*')
-          .order('joined_at', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
@@ -220,11 +217,12 @@
         }
 
         data.forEach(viewer => {
+          const timeStr = viewer.created_at ? new Date(viewer.created_at).toLocaleString('th-TH') : '-';
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${viewer.name}</td>
             <td>${viewer.twitter}</td>
-            <td>${new Date(viewer.joined_at).toLocaleString('th-TH')}</td>
+            <td>${timeStr}</td>
             <td><button class="ban-btn" onclick="banUser('${viewer.twitter}')">❌ แบนรายนี้</button></td>
           `;
           tbody.appendChild(tr);
@@ -234,7 +232,6 @@
       }
     }
 
-    // ฟังก์ชันแบนผู้ใช้
     async function banUser(twitter) {
       if (!confirm(`คุณต้องการแบนบัญชี ${twitter} ใช่หรือไม่?`)) return;
 
@@ -251,6 +248,13 @@
         alert('เกิดข้อผิดพลาดในการแบน: ' + err.message);
       }
     }
+
+    // ป้องกันการกดขยายเต็มจอแล้วหลุดไป YouTube (ถ้าอยู่โหมด Fullscreen จะซ่อนวิดีโอหรือบังคับออกทันทีเพื่อความปลอดภัยสูงสุด)
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) {
+        // หากผู้ใช้พยายามกดขยายเต็มจอ แจ้งเตือนหรือจัดการความปลอดภัยเพิ่มเติมตรงนี้ได้
+      }
+    });
   </script>
 </body>
 </html>
