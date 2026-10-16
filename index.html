@@ -28,7 +28,6 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
-    /* กล่องวิดีโอและการบล็อกคลิกออกนอกเว็บ */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -39,30 +38,17 @@
       margin: 15px 0; 
       border: 1px solid #30363d; 
     }
-    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; pointer-events: none; } /* ปิดการคลิกบน iframe ทั้งหมดเพื่อความปลอดภัย 100% */
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     
-    /* แผงปุ่มควบคุมกำหนดเองด้านล่าง */
-    .custom-controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
+    .video-blocker-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 50px);
+      z-index: 10;
+      background: transparent;
     }
-    .ctrl-btn {
-      background-color: #21262d;
-      border: 1px solid #30363d;
-      color: #f0f6fc;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      width: auto;
-      margin: 0;
-      transition: 0.2s;
-    }
-    .ctrl-btn:hover { background-color: #30363d; }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
     .viewer-count { font-size: 15px; color: #58a6ff; font-weight: bold; margin-bottom: 15px; }
@@ -117,14 +103,9 @@
     <p class="user-info" id="welcome-user"></p>
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
-    <!-- แผงปุ่มควบคุมวิดีโอ (เริ่ม/หยุด, ขยายจอ) -->
-    <div class="custom-controls">
-      <button class="ctrl-btn" onclick="togglePlay()">▶️ เริ่ม / ⏸️ หยุด</button>
-      <button class="ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
-    </div>
-
-    <div class="video-container" id="video-box">
-      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <div class="video-container">
+      <div class="video-blocker-top"></div>
+      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
 
@@ -158,8 +139,6 @@
     const SUPABASE_KEY = 'sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let isPlaying = true;
-
     function showCard(cardId) {
       document.getElementById('login-card').style.display = 'none';
       document.getElementById('admin-login-card').style.display = 'none';
@@ -168,27 +147,6 @@
       document.getElementById(cardId).style.display = 'block';
     }
 
-    // ฟังก์ชันควบคุมปุ่ม เล่น/หยุด วิดีโอผ่าน iframe postMessage
-    function togglePlay() {
-      const iframe = document.getElementById('yt-player');
-      isPlaying = !isPlaying;
-      const command = isPlaying ? '{"event":"command","func":"playVideo","args":""}' : '{"event":"command","func":"pauseVideo","args":""}';
-      iframe.contentWindow.postMessage(command, '*');
-    }
-
-    // ฟังก์ชันขยายเต็มจอเฉพาะกล่องวิดีโอ (ปลอดภัย ไม่หลุดไป YouTube)
-    function toggleFullscreen() {
-      const elem = document.getElementById('video-box');
-      if (!document.fullscreenElement) {
-        elem.requestFullscreen().catch(err => {
-          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
-        });
-      } else {
-        document.exitFullscreen();
-      }
-    }
-
-    // ฟังก์ชันบันทึกข้อมูลและตรวจสอบแบน
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -202,7 +160,7 @@
       }
 
       try {
-        const { data: bannedList, error: banErr } = await supabaseClient
+        const { data: bannedList } = await supabaseClient
           .from('banned_users')
           .select('*')
           .eq('twitter', twitter);
@@ -212,15 +170,19 @@
           return;
         }
 
-        await supabaseClient.from('viewers').insert([
+        // บันทึกข้อมูลลงตาราง viewers โดยใช้คอลัมน์ name และ twitter
+        const { error: insertErr } = await supabaseClient.from('viewers').insert([
           { name: name, twitter: twitter }
         ]);
+
+        if (insertErr) {
+          console.error('Insert error:', insertErr);
+        }
 
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
         document.getElementById('live-section').style.display = 'block';
         
-        // อัปเดตจำนวนคนดูบนหน้าจอ
         updateViewerCount();
 
       } catch (err) {
@@ -231,7 +193,6 @@
       }
     });
 
-    // ดึงจำนวนคนดูทั้งหมดมาแสดงฝั่งคนดู
     async function updateViewerCount() {
       try {
         const { count, error } = await supabaseClient
@@ -264,9 +225,9 @@
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
 
       try {
-        const { data, error, count } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('viewers')
-          .select('*', { count: 'exact' })
+          .select('*')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -292,7 +253,7 @@
         });
       } catch (err) {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล (โปรดตรวจสอบการสร้างตาราง viewers ใน Supabase)</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
       }
     }
 
