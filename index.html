@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ห้องถ่ายทอดสด - ระบบสมาชิก</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; padding: 20px; }
+    .card { background: #1e1e1e; padding: 25px; border-radius: 12px; max-width: 400px; margin: 40px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    input { width: 90%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
+    button { width: 90%; padding: 12px; margin-top: 15px; border-radius: 6px; border: none; background: #0070f3; color: white; font-weight: bold; cursor: pointer; }
+    button:hover { background: #0051a8; }
+    .switch-link { color: #0088ff; cursor: pointer; text-decoration: underline; margin-top: 15px; display: inline-block; font-size: 14px; }
+    #live-section { display: none; }
+    .video-container { position: relative; width: 100%; max-width: 900px; margin: 20px auto; aspect-ratio: 16/9; }
+    iframe { width: 100%; height: 100%; border: none; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. หน้าเข้าสู่ระบบ (Log In) -->
+  <div id="login-card" class="card">
+    <h2>เข้าสู่ระบบเพื่อชมไลฟ์สด</h2>
+    <input type="email" id="loginEmail" placeholder="อีเมลของคุณ">
+    <input type="password" id="loginPassword" placeholder="รหัสผ่าน">
+    <button onclick="handleLogin()">เข้าสู่ระบบ</button>
+    <div>
+      <span class="switch-link" onclick="toggleForm('signup')">ยังไม่มีบัญชี? สมัครสมาชิกที่นี่</span>
+    </div>
+  </div>
+
+  <!-- 2. หน้าสมัครสมาชิก (Sign Up) -->
+  <div id="signup-card" class="card" style="display: none;">
+    <h2>สมัครสมาชิกใหม่</h2>
+    <input type="text" id="signupName" placeholder="ชื่อ-นามสกุล หรือ ชื่อแสดงผล">
+    <input type="email" id="signupEmail" placeholder="อีเมล">
+    <input type="password" id="signupPassword" placeholder="ตั้งรหัสผ่าน (อย่างน้อย 6 ตัว)">
+    <button onclick="handleSignUp()" style="background: #28a745;">ยืนยันการสมัครสมาชิก</button>
+    <div>
+      <span class="switch-link" onclick="toggleForm('login')">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</span>
+    </div>
+  </div>
+
+  <!-- 3. หน้ารับชมไลฟ์สด (เมื่อ Log In สำเร็จ) -->
+  <div id="live-section">
+    <h2>🔴 กำลังถ่ายทอดสด</h2>
+    <p>ผู้เข้าชม: <strong id="userDisplayName" style="color: #00ff88;"></strong></p>
+    
+    <div class="video-container">
+      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1" allowfullscreen></iframe>
+    </div>
+    
+    <button onclick="handleLogout()" style="width: auto; padding: 8px 20px; background: #dc3545; margin-top: 20px;">ออกจากระบบ</button>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://eciqpqnpfpndyyurqhzf.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let loggedInUser = null;
+
+    function toggleForm(form) {
+      document.getElementById('login-card').style.display = form === 'login' ? 'block' : 'none';
+      document.getElementById('signup-card').style.display = form === 'signup' ? 'block' : 'none';
+    }
+
+    async function handleSignUp() {
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+
+      if (!name || !email || !password) return alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: { data: { display_name: name } }
+      });
+
+      if (error) {
+        alert('สมัครสมาชิกไม่สำเร็จ: ' + error.message);
+      } else {
+        alert('สมัครสมาชิกสำเร็จแล้ว! กรุณาเข้าสู่ระบบ');
+        toggleForm('login');
+      }
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        alert('เข้าสู่ระบบไม่สำเร็จ: ' + error.message);
+      } else {
+        const user = data.user;
+        loggedInUser = user.user_metadata.display_name || user.email;
+        showLivePage();
+      }
+    }
+
+    function showLivePage() {
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('signup-card').style.display = 'none';
+      document.getElementById('live-section').style.display = 'block';
+      document.getElementById('userDisplayName').innerText = loggedInUser;
+
+      sendHeartbeat();
+      setInterval(sendHeartbeat, 10000);
+    }
+
+    async function sendHeartbeat() {
+      if (!loggedInUser) return;
+      await supabase.from('viewer_logs').insert([
+        { username: loggedInUser, status: 'watching', last_ping: new Date() }
+      ]);
+    }
+
+    async function handleLogout() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
