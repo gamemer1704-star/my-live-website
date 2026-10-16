@@ -28,6 +28,7 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
+    /* กล่องวิดีโอและความปลอดภัยสูงสุด (ปิดการคลิกทะลุไปยูทูป) */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -38,17 +39,39 @@
       margin: 15px 0; 
       border: 1px solid #30363d; 
     }
-    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-    
-    .video-blocker-top {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 50px);
-      z-index: 10;
-      background: transparent;
+    .video-container iframe { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      border: 0; 
+      pointer-events: none; /* ห้ามคลิกที่ตัววิดีโอเด็ดขาด ป้องกันหลุดไปยูทูป */
     }
+
+    /* แผงปุ่มควบคุมที่เราสร้างขึ้นเองด้านล่าง */
+    .custom-controls {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      background-color: #21262d;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      width: auto;
+      margin: 0;
+      transition: 0.2s;
+    }
+    .ctrl-btn:hover { background-color: #30363d; border-color: #8b949e; }
+    .ctrl-btn.active { background-color: #238636; border-color: #2ea043; }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
     .viewer-count { font-size: 15px; color: #58a6ff; font-weight: bold; margin-bottom: 15px; }
@@ -103,9 +126,19 @@
     <p class="user-info" id="welcome-user"></p>
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
-    <div class="video-container">
-      <div class="video-blocker-top"></div>
-      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <!-- แผงปุ่มควบคุมที่เราทำขึ้นเอง (ปลอดภัย 100%) -->
+    <div class="custom-controls">
+      <button class="ctrl-btn" id="play-pause-btn" onclick="togglePlay()">⏸️ หยุดชั่วคราว</button>
+      <button class="ctrl-btn" onclick="setQuality('large')">480p</button>
+      <button class="ctrl-btn" onclick="setQuality('hd720')">720p</button>
+      <button class="ctrl-btn" onclick="setQuality('hd1080')">1080p</button>
+      <button class="ctrl-btn" onclick="setQuality('highres')">1080 HD</button>
+      <button class="ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
+    </div>
+
+    <div class="video-container" id="video-box">
+      <!-- โหลด YouTube ผ่าน IFrame API โดยปิดคอนโทรลเดิมทั้งหมด -->
+      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
     </div>
   </div>
 
@@ -131,6 +164,9 @@
     </div>
   </div>
 
+  <!-- โหลดสคริปต์ YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
   <script>
     const SECRET_CODE = "1235";      
     const ADMIN_CODE = "nano1278";   
@@ -138,6 +174,20 @@
     const SUPABASE_URL = 'https://eciqpqnpfpndyyurqhzf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let player;
+    let isPlaying = true;
+
+    // ฟังก์ชันเรียกใช้งานเมื่อ YouTube API พร้อม
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('yt-player', {
+        events: {
+          'onReady': (e) => {
+            e.target.playVideo();
+          }
+        }
+      });
+    }
 
     function showCard(cardId) {
       document.getElementById('login-card').style.display = 'none';
@@ -147,6 +197,44 @@
       document.getElementById(cardId).style.display = 'block';
     }
 
+    // ปุ่มควบคุม เล่น / หยุด
+    function togglePlay() {
+      if (!player) return;
+      const btn = document.getElementById('play-pause-btn');
+      if (isPlaying) {
+        player.pauseVideo();
+        isPlaying = false;
+        btn.innerHTML = "▶️ เริ่มเล่น";
+      } else {
+        player.playVideo();
+        isPlaying = true;
+        btn.innerHTML = "⏸️ หยุดชั่วคราว";
+      }
+    }
+
+    // ปุ่มปรับความชัด
+    function setQuality(qualityLevel) {
+      if (!player) {
+        alert('กำลังโหลดระบบวิดีโอ กรุณารอสักครู่...');
+        return;
+      }
+      player.setPlaybackQuality(qualityLevel);
+      alert('เปลี่ยนความชัดสำเร็จ');
+    }
+
+    // ปุ่มขยายเต็มจอ (สามารถกดปุ่ม Esc ที่คีย์บอร์ด หรือกดปุ่มนี้ซ้ำเพื่อย่อกลับมาได้ปกติ)
+    function toggleFullscreen() {
+      const elem = document.getElementById('video-box');
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // ฟังก์ชันตรวจสอบการเข้าชมและแบน
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -170,14 +258,9 @@
           return;
         }
 
-        // บันทึกข้อมูลลงตาราง viewers โดยใช้คอลัมน์ name และ twitter
-        const { error: insertErr } = await supabaseClient.from('viewers').insert([
+        await supabaseClient.from('viewers').insert([
           { name: name, twitter: twitter }
         ]);
-
-        if (insertErr) {
-          console.error('Insert error:', insertErr);
-        }
 
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
@@ -232,7 +315,7 @@
 
         if (error) throw error;
 
-        document.getElementById('admin-total-count').innerText = `📊 สรุปยอดผู้เข้าชมทั้งหมด: ${data.length} คน`;
+        document.getElementById('admin-total-count').innerText = `📊 สรุปยอดผู้เข้าชมทั้งหมด: ${data ? data.length : 0} คน`;
 
         tbody.innerHTML = '';
         if (!data || data.length === 0) {
@@ -244,8 +327,8 @@
           const timeStr = viewer.created_at ? new Date(viewer.created_at).toLocaleString('th-TH') : '-';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${viewer.name}</td>
-            <td>${viewer.twitter}</td>
+            <td>${viewer.name || '-'}</td>
+            <td>${viewer.twitter || '-'}</td>
             <td>${timeStr}</td>
             <td><button class="ban-btn" onclick="banUser('${viewer.twitter}')">❌ แบนรายนี้</button></td>
           `;
