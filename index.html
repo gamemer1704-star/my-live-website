@@ -28,7 +28,6 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
-    /* กล่องวิดีโอ */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -39,33 +38,49 @@
       margin: 15px 0; 
       border: 1px solid #30363d; 
     }
-    .video-container iframe { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      border: 0; 
-    }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     
-    /* เลเยอร์บล็อกเฉพาะตอนขยายเต็มจอ: บล็อกครึ่งบนไม่ให้กด แต่เปิดครึ่งล่างให้ใช้งานได้ */
-    .fullscreen-top-blocker {
+    /* บล็อกส่วนหัวไม่ให้กดหลุดไป YouTube ในหน้าจอปกติ */
+    .video-blocker-top {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 50%; /* ครอบคลุมพื้นที่ครึ่งบนของวิดีโอตอนเต็มจอ */
-      z-index: 9999;
+      height: 60px;
+      z-index: 10;
       background: transparent;
-      display: none;
-      pointer-events: auto;
     }
 
-    /* เมื่ออยู่ในโหมด Fullscreen ให้แสดงเลเยอร์บล็อกครึ่งบนนี้ทันที */
-    .video-container:fullscreen .fullscreen-top-blocker,
-    .video-container:-webkit-full-screen .fullscreen-top-blocker,
-    .video-container:-ms-fullscreen .fullscreen-top-blocker {
-      display: block;
+    /* แผงควบคุมพิเศษที่จะแสดงขึ้นมาเฉพาะตอนกดขยายเต็มจอ */
+    .fullscreen-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99999;
+      display: none;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+    }
+    .fs-btn {
+      background-color: #21262d;
+      color: #fff;
+      border: 1px solid #30363d;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .fs-btn:hover { background-color: #30363d; }
+
+    /* เมื่อเข้าโหมด Fullscreen ให้แสดงปุ่มควบคุมเฉพาะกิจขึ้นมา */
+    .video-container:fullscreen .fullscreen-controls,
+    .video-container:-webkit-full-screen .fullscreen-controls,
+    .video-container:-ms-fullscreen .fullscreen-controls {
+      display: flex;
     }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
@@ -122,8 +137,14 @@
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
     <div class="video-container" id="video-box">
-      <!-- เลเยอร์บล็อกครึ่งบนเฉพาะตอนเต็มจอ -->
-      <div class="fullscreen-top-blocker"></div>
+      <div class="video-blocker-top"></div>
+      
+      <!-- ปุ่มควบคุมเฉพาะกิจที่จะโผล่มาเฉพาะตอนขยายเต็มจอ -->
+      <div class="fullscreen-controls">
+        <button class="fs-btn" id="fs-play-btn" onclick="togglePlay()">⏸️ หยุด</button>
+        <button class="fs-btn" onclick="setQuality('hd1080')">⚙️ ปรับชัด (1080p)</button>
+      </div>
+
       <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
@@ -161,6 +182,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let player;
+    let isPlaying = true;
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('yt-player', {
@@ -176,6 +198,26 @@
       document.getElementById('live-section').style.display = 'none';
       document.getElementById('admin-section').style.display = 'none';
       document.getElementById(cardId).style.display = 'block';
+    }
+
+    function togglePlay() {
+      if (!player) return;
+      const btn = document.getElementById('fs-play-btn');
+      if (isPlaying) {
+        player.pauseVideo();
+        isPlaying = false;
+        btn.innerHTML = "▶️ เล่น";
+      } else {
+        player.playVideo();
+        isPlaying = true;
+        btn.innerHTML = "⏸️ หยุด";
+      }
+    }
+
+    function setQuality(level) {
+      if (!player) return;
+      player.setPlaybackQuality(level);
+      alert('ปรับความชัดเรียบร้อยแล้ว');
     }
 
     document.getElementById('access-form').addEventListener('submit', async (e) => {
