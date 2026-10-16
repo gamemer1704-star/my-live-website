@@ -21,13 +21,40 @@
     }
     button:hover { background-color: #2ea043; }
     
-    #live-section, #admin-section { display: none; width: 100%; max-width: 900px; text-align: center; }
-    .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: #000; margin: 20px 0; border: 1px solid #30363d; }
+    .admin-link-btn { background: none; border: none; color: #8b949e; font-size: 13px; cursor: pointer; margin-top: 15px; width: 100%; text-align: center; text-decoration: underline; }
+    .admin-link-btn:hover { color: #f0f6fc; }
+
+    #live-section, #admin-login-card, #admin-section { display: none; width: 100%; }
+    #live-section { max-width: 900px; text-align: center; }
+    #admin-section { max-width: 700px; }
+    
+    /* กล่องวิดีโอ */
+    .video-container { 
+      position: relative; 
+      padding-bottom: 56.25%; 
+      height: 0; 
+      overflow: hidden; 
+      border-radius: 12px; 
+      background: #000; 
+      margin: 20px 0; 
+      border: 1px solid #30363d; 
+    }
     .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    
+    .video-blocker-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      z-index: 10;
+      background: transparent;
+    }
+
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
 
     /* ตารางแอดมิน */
-    .admin-card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; text-align: left; width: 100%; max-width: 700px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .admin-card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; text-align: left; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { padding: 12px; border-bottom: 1px solid #30363d; text-align: left; font-size: 14px; }
     th { color: #8b949e; }
@@ -37,7 +64,7 @@
 </head>
 <body>
 
-  <!-- 1. หน้าฟอร์มกรอกข้อมูลเข้าชม -->
+  <!-- 1. หน้าฟอร์มสำหรับคนดูทั่วไป -->
   <div id="login-card" class="card">
     <h2>🔒 เข้าชมการถ่ายทอดสด</h2>
     <form id="access-form">
@@ -55,22 +82,37 @@
       </div>
       <button type="submit">ยืนยันรหัสผ่านเพื่อเข้าชม</button>
     </form>
+    <button class="admin-link-btn" onclick="showCard('admin-login-card')">🔐 สำหรับผู้ดูแลระบบ (Admin)</button>
   </div>
 
-  <!-- 2. หน้าชมไลฟ์สดสำหรับคนดู -->
+  <!-- 2. หน้ากรอกรหัสผ่านแอดมิน (nano1278) -->
+  <div id="admin-login-card" class="card" style="display: none;">
+    <h2>🛡️ เข้าสู่ระบบแอดมิน</h2>
+    <form id="admin-login-form">
+      <div class="form-group">
+        <label>รหัสผ่านแอดมิน</label>
+        <input type="password" id="admin-passcode" placeholder="กรอกรหัสแอดมิน" required>
+      </div>
+      <button type="submit" style="background-color: #1f6feb;">เข้าสู่หน้าจัดการ</button>
+    </form>
+    <button class="admin-link-btn" onclick="showCard('login-card')">← กลับไปหน้าคนดู</button>
+  </div>
+
+  <!-- 3. หน้าชมไลฟ์สดสำหรับคนดู -->
   <div id="live-section">
     <h2>🔴 กำลังรับชมการถ่ายทอดสด</h2>
     <p class="user-info" id="welcome-user"></p>
     <div class="video-container">
-      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      <div class="video-blocker-top"></div>
+      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
 
-  <!-- 3. หน้าแดชบอร์ดแอดมิน (#admin) สำหรับจัดการแบน -->
+  <!-- 4. หน้าแดชบอร์ดแอดมิน (จัดการแบน) -->
   <div id="admin-section">
     <div class="admin-card">
-      <h2>🛡️ ระบบจัดการแอดมิน (รายชื่อคนเข้าชม)</h2>
-      <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">คุณสามารถกดปุ่มแบนเพื่อตัดสิทธิ์ผู้ชมคนนั้นทันที</p>
+      <h2>🛡️ แดชบอร์ดแอดมิน (รายชื่อคนเข้าชม)</h2>
+      <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">ตรวจสอบรายชื่อและกดแบนผู้ชมที่ไม่ต้องการได้ทันที</p>
       <table>
         <thead>
           <tr>
@@ -84,26 +126,27 @@
           <!-- ข้อมูลจะโหลดขึ้นมาตรงนี้อัตโนมัติ -->
         </tbody>
       </table>
-      <button style="margin-top: 20px; background-color: #30363d;" onclick="location.hash=''; location.reload();">ออกจากหน้าแอดมิน</button>
+      <button style="margin-top: 20px; background-color: #30363d;" onclick="location.reload();">ออกจากระบบแอดมิน</button>
     </div>
   </div>
 
   <script>
-    const SECRET_CODE = "1235"; 
+    const SECRET_CODE = "1235";      // รหัสสำหรับคนดู
+    const ADMIN_CODE = "nano1278";   // รหัสสำหรับแอดมิน
+    
     const SUPABASE_URL = 'https://eciqpqnpfpndyyurqhzf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // ตรวจสอบว่าเป็นหน้าแอดมินหรือไม่ (#admin)
-    window.addEventListener('load', () => {
-      if (window.location.hash === '#admin') {
-        document.getElementById('login-card').style.display = 'none';
-        document.getElementById('admin-section').style.display = 'block';
-        loadAdminViewers();
-      }
-    });
+    function showCard(cardId) {
+      document.getElementById('login-card').style.display = 'none';
+      document.getElementById('admin-login-card').style.display = 'none';
+      document.getElementById('live-section').style.display = 'none';
+      document.getElementById('admin-section').style.display = 'none';
+      document.getElementById(cardId).style.display = 'block';
+    }
 
-    // ระบบตรวจสอบสิทธิ์เมื่อผู้ชมนมเข้าชม
+    // ตรวจสอบรหัสคนดูทั่วไป
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -117,7 +160,6 @@
       }
 
       try {
-        // เช็กว่าโดนแบนในตาราง banned_users หรือไม่
         const { data: bannedList } = await supabaseClient
           .from('banned_users')
           .select('*')
@@ -128,12 +170,10 @@
           return;
         }
 
-        // บันทึกประวัติการเข้าชม
         await supabaseClient.from('viewers').insert([
           { name: name, twitter: twitter, joined_at: new Date().toISOString() }
         ]);
 
-        // เปิดหน้าดูไลฟ์
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
         document.getElementById('live-section').style.display = 'block';
@@ -146,7 +186,21 @@
       }
     });
 
-    // ฟังก์ชันฝั่งแอดมิน: โหลดรายชื่อคนดูทั้งหมด
+    // ตรวจสอบรหัสเข้าหน้าแอดมิน (nano1278)
+    document.getElementById('admin-login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inputCode = document.getElementById('admin-passcode').value.trim();
+
+      if (inputCode !== ADMIN_CODE) {
+        alert('❌ รหัสผ่านแอดมินไม่ถูกต้อง!');
+        return;
+      }
+
+      showCard('admin-section');
+      loadAdminViewers();
+    });
+
+    // โหลดรายชื่อคนดูสำหรับแอดมิน
     async function loadAdminViewers() {
       const tbody = document.getElementById('viewer-table-body');
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
@@ -176,16 +230,15 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล (โปรดสร้างตาราง viewers และ banned_users ใน Supabase)</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
       }
     }
 
-    // ฟังก์ชันฝั่งแอดมิน: กดแบนผู้ใช้
+    // ฟังก์ชันแบนผู้ใช้
     async function banUser(twitter) {
       if (!confirm(`คุณต้องการแบนบัญชี ${twitter} ใช่หรือไม่?`)) return;
 
       try {
-        // บันทึกชื่อลงตาราง banned_users
         const { error } = await supabaseClient
           .from('banned_users')
           .insert([{ twitter: twitter, reason: 'Admin Banned Live' }]);
@@ -193,7 +246,7 @@
         if (error) throw error;
 
         alert(`แบน ${twitter} สำเร็จเรียบร้อย!`);
-        loadAdminViewers(); // โหลดรายชื่อใหม่
+        loadAdminViewers();
       } catch (err) {
         alert('เกิดข้อผิดพลาดในการแบน: ' + err.message);
       }
