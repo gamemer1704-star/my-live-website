@@ -40,7 +40,6 @@
     }
     .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     
-    /* บล็อกส่วนหัวไม่ให้กดหลุดไป YouTube ในหน้าจอปกติ */
     .video-blocker-top {
       position: absolute;
       top: 0;
@@ -51,7 +50,6 @@
       background: transparent;
     }
 
-    /* แผงควบคุมพิเศษที่จะแสดงขึ้นมาเฉพาะตอนกดขยายเต็มจอ */
     .fullscreen-controls {
       position: absolute;
       bottom: 20px;
@@ -76,7 +74,6 @@
     }
     .fs-btn:hover { background-color: #30363d; }
 
-    /* เมื่อเข้าโหมด Fullscreen ให้แสดงปุ่มควบคุมเฉพาะกิจขึ้นมา */
     .video-container:fullscreen .fullscreen-controls,
     .video-container:-webkit-full-screen .fullscreen-controls,
     .video-container:-ms-fullscreen .fullscreen-controls {
@@ -139,7 +136,6 @@
     <div class="video-container" id="video-box">
       <div class="video-blocker-top"></div>
       
-      <!-- ปุ่มควบคุมเฉพาะกิจที่จะโผล่มาเฉพาะตอนขยายเต็มจอ -->
       <div class="fullscreen-controls">
         <button class="fs-btn" id="fs-play-btn" onclick="togglePlay()">⏸️ หยุด</button>
         <button class="fs-btn" onclick="setQuality('hd1080')">⚙️ ปรับชัด (1080p)</button>
@@ -149,7 +145,7 @@
     </div>
   </div>
 
-  <!-- 4. หน้าแดชบอร์ดแอดมิน (จัดการแบน) -->
+  <!-- 4. หน้าแดชบอร์ดแอดมิน (จัดการแบน / เตะออก) -->
   <div id="admin-section">
     <div class="admin-card">
       <h2>🛡️ แดชบอร์ดแอดมิน (รายชื่อคนเข้าชม)</h2>
@@ -233,19 +229,25 @@
       }
 
       try {
-        const { data: bannedList } = await supabaseClient
+        const { data: bannedList, error: banCheckErr } = await supabaseClient
           .from('banned_users')
           .select('*')
           .eq('twitter', twitter);
+
+        if (banCheckErr) console.error(banCheckErr);
 
         if (bannedList && bannedList.length > 0) {
           alert('🚫 ขออภัย คุณถูกระงับสิทธิ์ในการเข้าชมการถ่ายทอดสดนี้');
           return;
         }
 
-        await supabaseClient.from('viewers').insert([
+        const { error: insertErr } = await supabaseClient.from('viewers').insert([
           { name: name, twitter: twitter }
         ]);
+
+        if (insertErr) {
+          console.error('Insert error:', insertErr);
+        }
 
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
