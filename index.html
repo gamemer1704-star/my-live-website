@@ -46,37 +46,27 @@
       width: 100%; 
       height: 100%; 
       border: 0; 
-      pointer-events: none; /* ป้องกันการคลิกทะลุไปยูทูปในโหมดปกติ */
+    }
+    
+    /* เลเยอร์บล็อกเฉพาะตอนขยายเต็มจอ: บล็อกครึ่งบนไม่ให้กด แต่เปิดครึ่งล่างให้ใช้งานได้ */
+    .fullscreen-top-blocker {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 50%; /* ครอบคลุมพื้นที่ครึ่งบนของวิดีโอตอนเต็มจอ */
+      z-index: 9999;
+      background: transparent;
+      display: none;
+      pointer-events: auto;
     }
 
-    /* เมื่ออยู่ในโหมดเต็มจอ จะปลดล็อกให้แถบควบคุมด้านล่าง (รวมปุ่มฟันเฟืองปรับความชัดและปุ่มหยุด) ทำงานได้ */
-    .video-container:fullscreen iframe,
-    .video-container:-webkit-full-screen iframe,
-    .video-container:-ms-fullscreen iframe {
-      pointer-events: auto !important;
+    /* เมื่ออยู่ในโหมด Fullscreen ให้แสดงเลเยอร์บล็อกครึ่งบนนี้ทันที */
+    .video-container:fullscreen .fullscreen-top-blocker,
+    .video-container:-webkit-full-screen .fullscreen-top-blocker,
+    .video-container:-ms-fullscreen .fullscreen-top-blocker {
+      display: block;
     }
-
-    .custom-controls {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
-    }
-    .ctrl-btn {
-      background-color: #21262d;
-      border: 1px solid #30363d;
-      color: #f0f6fc;
-      padding: 8px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      width: auto;
-      margin: 0;
-      transition: 0.2s;
-    }
-    .ctrl-btn:hover { background-color: #30363d; border-color: #8b949e; }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
     .viewer-count { font-size: 15px; color: #58a6ff; font-weight: bold; margin-bottom: 15px; }
@@ -131,13 +121,9 @@
     <p class="user-info" id="welcome-user"></p>
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
-    <div class="custom-controls">
-      <button class="ctrl-btn" id="play-pause-btn" onclick="togglePlay()">⏸️ หยุดชั่วคราว</button>
-      <button class="ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
-    </div>
-
     <div class="video-container" id="video-box">
-      <!-- เปิด controls=1 เฉพาะตอนเต็มจอ เพื่อให้กดฟันเฟืองปรับความชัดและปุ่มหยุดได้ -->
+      <!-- เลเยอร์บล็อกครึ่งบนเฉพาะตอนเต็มจอ -->
+      <div class="fullscreen-top-blocker"></div>
       <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
@@ -175,7 +161,6 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let player;
-    let isPlaying = true;
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('yt-player', {
@@ -191,31 +176,6 @@
       document.getElementById('live-section').style.display = 'none';
       document.getElementById('admin-section').style.display = 'none';
       document.getElementById(cardId).style.display = 'block';
-    }
-
-    function togglePlay() {
-      if (!player) return;
-      const btn = document.getElementById('play-pause-btn');
-      if (isPlaying) {
-        player.pauseVideo();
-        isPlaying = false;
-        btn.innerHTML = "▶️ เริ่มเล่น";
-      } else {
-        player.playVideo();
-        isPlaying = true;
-        btn.innerHTML = "⏸️ หยุดชั่วคราว";
-      }
-    }
-
-    function toggleFullscreen() {
-      const elem = document.getElementById('video-box');
-      if (!document.fullscreenElement) {
-        elem.requestFullscreen().catch(err => {
-          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
-        });
-      } else {
-        document.exitFullscreen();
-      }
     }
 
     document.getElementById('access-form').addEventListener('submit', async (e) => {
@@ -313,27 +273,27 @@
             <td>${viewer.name || '-'}</td>
             <td>${viewer.twitter || '-'}</td>
             <td>${timeStr}</td>
-            <td><button class="ban-btn" onclick="banUser('${viewer.twitter}')">❌ แบนรายนี้</button></td>
+            <td><button class="ban-btn" onclick="banUser('${viewer.twitter}')">❌ เตะออก / แบน</button></td>
           `;
           tbody.appendChild(tr);
         });
       } catch (err) {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
       }
     }
 
     async function banUser(twitter) {
-      if (!confirm(`คุณต้องการแบนบัญชี ${twitter} ใช่หรือไม่?`)) return;
+      if (!confirm(`คุณต้องการแบนและเตะบัญชี ${twitter} ออกจากการรับชมใช่หรือไม่?`)) return;
 
       try {
         const { error } = await supabaseClient
           .from('banned_users')
-          .insert([{ twitter: twitter, reason: 'Admin Banned Live' }]);
+          .insert([{ twitter: twitter, reason: 'Admin Kicked Live' }]);
 
         if (error) throw error;
 
-        alert(`แบน ${twitter} สำเร็จเรียบร้อย!`);
+        alert(`แบนบัญชี ${twitter} เรียบร้อยแล้ว!`);
         loadAdminViewers();
       } catch (err) {
         alert('เกิดข้อผิดพลาดในการแบน: ' + err.message);
