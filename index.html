@@ -28,7 +28,7 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
-    /* กล่องวิดีโอหลัก */
+    /* กล่องวิดีโอและการบล็อกคลิกออกนอกเว็บ */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -36,23 +36,36 @@
       overflow: hidden; 
       border-radius: 12px; 
       background: #000; 
-      margin: 20px 0; 
+      margin: 15px 0; 
       border: 1px solid #30363d; 
     }
-    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; pointer-events: none; } /* ปิดการคลิกบน iframe ทั้งหมดเพื่อความปลอดภัย 100% */
     
-    /* เลเยอร์บล็อกป้องกันคลิกออกไปยูทูป (ครอบคลุมทั้งตัวจอและแถบบน) */
-    .video-blocker-top {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 45px); /* เว้นเฉพาะแถบควบคุมด้านล่างสุดไว้ให้กดเสียงและความชัดได้ */
-      z-index: 10;
-      background: transparent;
+    /* แผงปุ่มควบคุมกำหนดเองด้านล่าง */
+    .custom-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
     }
+    .ctrl-btn {
+      background-color: #21262d;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      width: auto;
+      margin: 0;
+      transition: 0.2s;
+    }
+    .ctrl-btn:hover { background-color: #30363d; }
 
-    .user-info { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
+    .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
+    .viewer-count { font-size: 15px; color: #58a6ff; font-weight: bold; margin-bottom: 15px; }
 
     .admin-card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; text-align: left; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -102,9 +115,16 @@
   <div id="live-section">
     <h2>🔴 กำลังรับชมการถ่ายทอดสด</h2>
     <p class="user-info" id="welcome-user"></p>
-    <div class="video-container" id="vid-container">
-      <div class="video-blocker-top"></div>
-      <iframe src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
+    
+    <!-- แผงปุ่มควบคุมวิดีโอ (เริ่ม/หยุด, ขยายจอ) -->
+    <div class="custom-controls">
+      <button class="ctrl-btn" onclick="togglePlay()">▶️ เริ่ม / ⏸️ หยุด</button>
+      <button class="ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
+    </div>
+
+    <div class="video-container" id="video-box">
+      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
 
@@ -112,7 +132,7 @@
   <div id="admin-section">
     <div class="admin-card">
       <h2>🛡️ แดชบอร์ดแอดมิน (รายชื่อคนเข้าชม)</h2>
-      <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">ตรวจสอบรายชื่อและกดแบนผู้ชมที่ไม่ต้องการได้ทันที</p>
+      <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;" id="admin-total-count">กำลังโหลดจำนวนผู้ชม...</p>
       <table>
         <thead>
           <tr>
@@ -138,6 +158,8 @@
     const SUPABASE_KEY = 'sb_publishable_c7FKBI_HRzR-KyBT2aYiUa_1fp28csm';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    let isPlaying = true;
+
     function showCard(cardId) {
       document.getElementById('login-card').style.display = 'none';
       document.getElementById('admin-login-card').style.display = 'none';
@@ -146,6 +168,27 @@
       document.getElementById(cardId).style.display = 'block';
     }
 
+    // ฟังก์ชันควบคุมปุ่ม เล่น/หยุด วิดีโอผ่าน iframe postMessage
+    function togglePlay() {
+      const iframe = document.getElementById('yt-player');
+      isPlaying = !isPlaying;
+      const command = isPlaying ? '{"event":"command","func":"playVideo","args":""}' : '{"event":"command","func":"pauseVideo","args":""}';
+      iframe.contentWindow.postMessage(command, '*');
+    }
+
+    // ฟังก์ชันขยายเต็มจอเฉพาะกล่องวิดีโอ (ปลอดภัย ไม่หลุดไป YouTube)
+    function toggleFullscreen() {
+      const elem = document.getElementById('video-box');
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // ฟังก์ชันบันทึกข้อมูลและตรวจสอบแบน
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -159,7 +202,7 @@
       }
 
       try {
-        const { data: bannedList } = await supabaseClient
+        const { data: bannedList, error: banErr } = await supabaseClient
           .from('banned_users')
           .select('*')
           .eq('twitter', twitter);
@@ -176,6 +219,9 @@
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
         document.getElementById('live-section').style.display = 'block';
+        
+        // อัปเดตจำนวนคนดูบนหน้าจอ
+        updateViewerCount();
 
       } catch (err) {
         console.log('Error:', err);
@@ -184,6 +230,21 @@
         document.getElementById('live-section').style.display = 'block';
       }
     });
+
+    // ดึงจำนวนคนดูทั้งหมดมาแสดงฝั่งคนดู
+    async function updateViewerCount() {
+      try {
+        const { count, error } = await supabaseClient
+          .from('viewers')
+          .select('*', { count: 'exact', head: true });
+        
+        if (!error) {
+          document.getElementById('live-viewer-count').innerText = `👥 ขณะนี้มีผู้กำลังรับชมทั้งหมด ${count || 0} คน`;
+        }
+      } catch (e) {
+        document.getElementById('live-viewer-count').innerText = `👥 กำลังรับชมสด`;
+      }
+    }
 
     document.getElementById('admin-login-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -203,12 +264,14 @@
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
 
       try {
-        const { data, error } = await supabaseClient
+        const { data, error, count } = await supabaseClient
           .from('viewers')
-          .select('*')
+          .select('*', { count: 'exact' })
           .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        document.getElementById('admin-total-count').innerText = `📊 สรุปยอดผู้เข้าชมทั้งหมด: ${data.length} คน`;
 
         tbody.innerHTML = '';
         if (!data || data.length === 0) {
@@ -228,7 +291,8 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: #f85149;">เกิดข้อผิดพลาดในการโหลดข้อมูล (โปรดตรวจสอบการสร้างตาราง viewers ใน Supabase)</td></tr>`;
       }
     }
 
@@ -248,13 +312,6 @@
         alert('เกิดข้อผิดพลาดในการแบน: ' + err.message);
       }
     }
-
-    // ป้องกันการกดขยายเต็มจอแล้วหลุดไป YouTube (ถ้าอยู่โหมด Fullscreen จะซ่อนวิดีโอหรือบังคับออกทันทีเพื่อความปลอดภัยสูงสุด)
-    document.addEventListener('fullscreenchange', () => {
-      if (document.fullscreenElement) {
-        // หากผู้ใช้พยายามกดขยายเต็มจอ แจ้งเตือนหรือจัดการความปลอดภัยเพิ่มเติมตรงนี้ได้
-      }
-    });
   </script>
 </body>
 </html>
