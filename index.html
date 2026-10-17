@@ -28,6 +28,7 @@
     #live-section { max-width: 900px; text-align: center; }
     #admin-section { max-width: 700px; }
     
+    /* กล่องวิดีโอ */
     .video-container { 
       position: relative; 
       padding-bottom: 56.25%; 
@@ -38,46 +39,63 @@
       margin: 15px 0; 
       border: 1px solid #30363d; 
     }
-    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-    
-    .video-blocker-top {
+    .video-container iframe { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      border: 0; 
+      pointer-events: none; /* ล็อกหน้าจอก่อนขยาย ห้ามคลิกอะไรบนคลิปเด็ดขาด */
+    }
+
+    /* ปุ่มควบคุมเฉพาะหน้าจอปรกติ (มีแค่ปุ่ม เริ่ม/หยุด และ ขยายเต็มจอ) */
+    .custom-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    .ctrl-btn {
+      background-color: #238636;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      width: auto;
+      margin: 0;
+    }
+    .ctrl-btn:hover { background-color: #2ea043; }
+    .fs-ctrl-btn { background-color: #1f6feb; }
+    .fs-ctrl-btn:hover { background-color: #388bfd; }
+
+    /* เลเยอร์บล็อกครึ่งบนเฉพาะตอนกดขยายเต็มจอ (ปล่อยให้ครึ่งล่างใช้งานได้) */
+    .fullscreen-top-blocker {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 60px;
-      z-index: 10;
-      background: transparent;
-    }
-
-    .fullscreen-controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      height: 50%;
       z-index: 99999;
+      background: transparent;
       display: none;
-      gap: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: 1px solid #30363d;
+      pointer-events: auto;
     }
-    .fs-btn {
-      background-color: #21262d;
-      color: #fff;
-      border: 1px solid #30363d;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .fs-btn:hover { background-color: #30363d; }
 
-    .video-container:fullscreen .fullscreen-controls,
-    .video-container:-webkit-full-screen .fullscreen-controls,
-    .video-container:-ms-fullscreen .fullscreen-controls {
-      display: flex;
+    /* เมื่อเข้าสู่โหมด Fullscreen: ปลดล็อกให้ iframe ทำงานได้ แต่แสดงเลเยอร์บล็อกครึ่งบนทับไว้ */
+    .video-container:fullscreen iframe,
+    .video-container:-webkit-full-screen iframe,
+    .video-container:-ms-fullscreen iframe {
+      pointer-events: auto !important;
+    }
+
+    .video-container:fullscreen .fullscreen-top-blocker,
+    .video-container:-webkit-full-screen .fullscreen-top-blocker,
+    .video-container:-ms-fullscreen .fullscreen-top-blocker {
+      display: block;
     }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
@@ -133,15 +151,17 @@
     <p class="user-info" id="welcome-user"></p>
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
-    <div class="video-container" id="video-box">
-      <div class="video-blocker-top"></div>
-      
-      <div class="fullscreen-controls">
-        <button class="fs-btn" id="fs-play-btn" onclick="togglePlay()">⏸️ หยุด</button>
-        <button class="fs-btn" onclick="setQuality('hd1080')">⚙️ ปรับชัด (1080p)</button>
-      </div>
+    <!-- ปุ่มควบคุมหน้าจอปรกติ (มีแค่ เริ่ม/หยุด และ ขยายเต็มจอ) -->
+    <div class="custom-controls">
+      <button class="ctrl-btn" id="play-pause-btn" onclick="togglePlay()">⏸️ หยุดชั่วคราว</button>
+      <button class="ctrl-btn fs-ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
+    </div>
 
-      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <div class="video-container" id="video-box">
+      <!-- บล็อกครึ่งบนเฉพาะตอนขยายเต็มจอ -->
+      <div class="fullscreen-top-blocker"></div>
+      
+      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
     </div>
   </div>
 
@@ -198,22 +218,27 @@
 
     function togglePlay() {
       if (!player) return;
-      const btn = document.getElementById('fs-play-btn');
+      const btn = document.getElementById('play-pause-btn');
       if (isPlaying) {
         player.pauseVideo();
         isPlaying = false;
-        btn.innerHTML = "▶️ เล่น";
+        btn.innerHTML = "▶️ เริ่มเล่น";
       } else {
         player.playVideo();
         isPlaying = true;
-        btn.innerHTML = "⏸️ หยุด";
+        btn.innerHTML = "⏸️ หยุดชั่วคราว";
       }
     }
 
-    function setQuality(level) {
-      if (!player) return;
-      player.setPlaybackQuality(level);
-      alert('ปรับความชัดเรียบร้อยแล้ว');
+    function toggleFullscreen() {
+      const elem = document.getElementById('video-box');
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
+        });
+      } else {
+        document.exitFullscreen();
+      }
     }
 
     document.getElementById('access-form').addEventListener('submit', async (e) => {
