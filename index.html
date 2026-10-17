@@ -2,22 +2,22 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>เข้าชมการถ่ายทอดสด - Exclusive Live Stream</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #0d1117; color: #ffffff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; width: 100%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    h2 { text-align: center; margin-bottom: 24px; color: #f0f6fc; font-size: 22px; }
-    .form-group { margin-bottom: 18px; }
+    body { background-color: #0d1117; color: #ffffff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+    .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; width: 100%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h2 { text-align: center; margin-bottom: 20px; color: #f0f6fc; font-size: 20px; }
+    .form-group { margin-bottom: 16px; }
     label { display: block; margin-bottom: 8px; font-size: 14px; color: #8b949e; }
     input[type="text"], input[type="password"] {
       width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #30363d; background-color: #0d1117; color: #f0f6fc; font-size: 15px; outline: none; transition: 0.2s;
     }
     input:focus { border-color: #238636; box-shadow: 0 0 0 3px rgba(35,134,54,0.3); }
     button {
-      width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #238636; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px;
+      width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #238636; color: white; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 8px;
     }
     button:hover { background-color: #2ea043; }
     
@@ -39,7 +39,7 @@
       border: 1px solid #30363d; 
     }
     
-    /* สภาวะปกติ: บล็อกการคลิกวิดีโอทั้งหมด */
+    /* ในภาวะปกติ: บล็อกการคลิกบนคลิป เพื่อไม่ให้เผลอกดหลุดไป YouTube */
     .video-container iframe { 
       position: absolute; 
       top: 0; 
@@ -50,52 +50,53 @@
       pointer-events: none; 
     }
 
-    /* กล่องใสซ้อนทับด้านบนสุดเพื่อป้องกันการคลิกโดนโลโก้และชื่อคลิปตอนเต็มจอ */
+    /* เมื่อเข้าโหมดขยายเต็มจอ: ปลดล็อกให้กดปุ่มควบคุมล่างของ YouTube ได้ทันที */
+    .video-container.is-fullscreen iframe {
+      pointer-events: auto !important;
+    }
+
+    /* แผ่นใสบล็อกส่วนหัว บล็อกเฉพาะ 60px ด้านบนสุดของวิดีโอเมื่อขยายเต็มจอ */
     .top-header-blocker {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 80px; /* บล็อกเฉพาะพื้นที่ส่วนหัว 80px ด้านบน */
-      z-index: 2147483647;
+      height: 60px;
+      z-index: 100;
       background: transparent;
       display: none;
+      pointer-events: auto;
     }
 
-    /* เมื่อเข้าสู่โหมดขยายเต็มจอ (Fullscreen) */
-    .video-container:fullscreen iframe,
-    .video-container:-webkit-full-screen iframe,
-    .video-container:-ms-fullscreen iframe {
-      pointer-events: auto !important; /* ปลดล็อกให้กดปุ่มควบคุม YouTube ด้านล่างได้ทั้งหมด */
-    }
-
-    .video-container:fullscreen .top-header-blocker,
-    .video-container:-webkit-full-screen .top-header-blocker,
-    .video-container:-ms-fullscreen .top-header-blocker {
-      display: block; /* เปิดการทำงานของกล่องใสบล็อกส่วนหัวด้านบน */
+    .video-container.is-fullscreen .top-header-blocker {
+      display: block;
     }
 
     .custom-controls {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       justify-content: center;
       margin-bottom: 15px;
+      flex-wrap: wrap;
     }
     .ctrl-btn {
       background-color: #238636;
       color: #fff;
       border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
+      padding: 10px 16px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 14px;
       font-weight: bold;
-      width: auto;
-      margin: 0;
+      flex: 1;
+      min-width: 100px;
+      max-width: 180px;
     }
     .ctrl-btn:hover { background-color: #2ea043; }
     .fs-ctrl-btn { background-color: #1f6feb; }
     .fs-ctrl-btn:hover { background-color: #388bfd; }
+    .reload-ctrl-btn { background-color: #d97706; }
+    .reload-ctrl-btn:hover { background-color: #f59e0b; }
 
     .user-info { font-size: 14px; color: #8b949e; margin-bottom: 5px; }
     .viewer-count { font-size: 15px; color: #58a6ff; font-weight: bold; margin-bottom: 15px; }
@@ -151,15 +152,14 @@
     <p class="viewer-count" id="live-viewer-count">👥 กำลังโหลดจำนวนคนดู...</p>
     
     <div class="custom-controls">
-      <button class="ctrl-btn" id="play-pause-btn" onclick="togglePlay()">⏸️ หยุดชั่วคราว</button>
+      <button class="ctrl-btn" id="play-pause-btn" onclick="togglePlay()">▶️ เริ่มเล่น</button>
+      <button class="ctrl-btn reload-ctrl-btn" onclick="reloadVideo()">🔄 รีเฟรชคลิป</button>
       <button class="ctrl-btn fs-ctrl-btn" onclick="toggleFullscreen()">⛶ ขยายเต็มจอ</button>
     </div>
 
     <div class="video-container" id="video-box">
-      <!-- ตัวบล็อกบริเวณชื่อคลิปและโลโก้ด้านบนสุดตอนขยายเต็มจอ -->
       <div class="top-header-blocker"></div>
-      
-      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=1&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      <iframe id="yt-player" src="https://www.youtube.com/embed/BP-pdUF2YMs?autoplay=0&enablejsapi=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
   </div>
 
@@ -178,7 +178,6 @@
           </tr>
         </thead>
         <tbody id="viewer-table-body">
-          <!-- ข้อมูลจะโหลดขึ้นมาตรงนี้อัตโนมัติ -->
         </tbody>
       </table>
       <button style="margin-top: 20px; background-color: #30363d;" onclick="location.reload();">ออกจากระบบแอดมิน</button>
@@ -196,14 +195,25 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let player;
-    let isPlaying = true;
+    let isPlaying = false;
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('yt-player', {
         events: {
-          'onReady': (e) => { e.target.playVideo(); }
+          'onStateChange': onPlayerStateChange
         }
       });
+    }
+
+    function onPlayerStateChange(event) {
+      const btn = document.getElementById('play-pause-btn');
+      if (event.data === YT.PlayerState.PLAYING) {
+        isPlaying = true;
+        btn.innerHTML = "⏸️ หยุดชั่วคราว";
+      } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+        isPlaying = false;
+        btn.innerHTML = "▶️ เริ่มเล่น";
+      }
     }
 
     function showCard(cardId) {
@@ -215,29 +225,49 @@
     }
 
     function togglePlay() {
-      if (!player) return;
-      const btn = document.getElementById('play-pause-btn');
+      if (!player || typeof player.playVideo !== 'function') return;
       if (isPlaying) {
         player.pauseVideo();
-        isPlaying = false;
-        btn.innerHTML = "▶️ เริ่มเล่น";
       } else {
         player.playVideo();
-        isPlaying = true;
-        btn.innerHTML = "⏸️ หยุดชั่วคราว";
       }
+    }
+
+    function reloadVideo() {
+      if (!player || typeof player.loadVideoById !== 'function') return;
+      player.loadVideoById('BP-pdUF2YMs');
     }
 
     function toggleFullscreen() {
       const elem = document.getElementById('video-box');
-      if (!document.fullscreenElement) {
-        elem.requestFullscreen().catch(err => {
-          alert('ไม่สามารถเปิดโหมดเต็มจอได้: ' + err.message);
-        });
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        }
       } else {
-        document.exitFullscreen();
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
       }
     }
+
+    /* ใช้ JavaScript ตรวจจับการขยายจอ และสลับคลาสแบบไดนามิก */
+    function handleFullscreenChange() {
+      const elem = document.getElementById('video-box');
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFS) {
+        elem.classList.add('is-fullscreen');
+      } else {
+        elem.classList.remove('is-fullscreen');
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
     document.getElementById('access-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -252,25 +282,19 @@
       }
 
       try {
-        const { data: bannedList, error: banCheckErr } = await supabaseClient
+        const { data: bannedList } = await supabaseClient
           .from('banned_users')
           .select('*')
           .eq('twitter', twitter);
-
-        if (banCheckErr) console.error(banCheckErr);
 
         if (bannedList && bannedList.length > 0) {
           alert('🚫 ขออภัย คุณถูกระงับสิทธิ์ในการเข้าชมการถ่ายทอดสดนี้');
           return;
         }
 
-        const { error: insertErr } = await supabaseClient.from('viewers').insert([
+        await supabaseClient.from('viewers').insert([
           { name: name, twitter: twitter }
         ]);
-
-        if (insertErr) {
-          console.error('Insert error:', insertErr);
-        }
 
         document.getElementById('login-card').style.display = 'none';
         document.getElementById('welcome-user').innerText = `ยินดีต้อนรับ: ${name} (${twitter})`;
